@@ -1,4 +1,5 @@
 import entity.Parking;
+import entity.RecordNotFoundException;
 import service.ParkingService;
 import java.util.Date;
 import java.sql.Timestamp;

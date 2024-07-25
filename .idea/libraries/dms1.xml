@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="dms1">
+    <CLASSES>
+      <root url="jar://F:/S6/CONTENTS/ORA-JDBC-DRIVER/dms.jar!/" />
+      <root url="jar://F:/S6/CONTENTS/ORA-JDBC-DRIVER/ojdbc7.jar!/" />
+      <root url="jar://F:/S6/CONTENTS/ORA-JDBC-DRIVER/ojdbc7dms.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

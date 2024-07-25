@@ -1,6 +1,8 @@
 package repository;
 
+import entity.ExceptionWrapper;
 import entity.Parking;
+import entity.RecordNotFoundException;
 import oracle.jdbc.proxy.annotation.Pre;
 
 import java.sql.*;
@@ -12,7 +14,7 @@ public class ParkingDA implements AutoCloseable {
 
     public ParkingDA() throws ClassNotFoundException, SQLException {
         Class.forName("oracle.jdbc.driver.OracleDriver");
-        this.connection = DriverManager.getConnection("jdbc:oracle:thin:@avdf01.rh:2019/rayannav21c.rh","N12KRP209","n");
+        this.connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521/xepdb1","masoud","1234");
         connection.setAutoCommit(false);
     }
 
@@ -39,12 +41,12 @@ public class ParkingDA implements AutoCloseable {
         preparedStatement.executeUpdate();
     }
 
-    public void selectOneByCarId(Parking parking) throws Exception {
+    public void selectOneByCarId(Parking parking) throws Exception, RecordNotFoundException {
         preparedStatement = connection.prepareStatement("select * from Parking where car_id = ?");
         preparedStatement.setInt(1, parking.getCarId());
         ResultSet resultSet = preparedStatement.executeQuery();
         if(!resultSet.next()) {
-            throw new Exception();
+            throw new RecordNotFoundException();
         }
         parking.setModel(resultSet.getString("model"))
                 .setBrand(resultSet.getString("brand"))

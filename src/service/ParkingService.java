@@ -1,11 +1,17 @@
 package service;
 
+import entity.ExceptionWrapper;
+import entity.ExitTimeIsSmallerThanEnterTime;
 import entity.Parking;
+import entity.RecordNotFoundException;
 import repository.ParkingDA;
 
+import java.sql.SQLException;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 public class ParkingService {
@@ -20,16 +26,31 @@ public class ParkingService {
         }
     }
 
-    public void exit(Parking parking) throws Exception {
+    public void exit(Parking parking) {
         try (ParkingDA parkingDA = new ParkingDA();) {
             Date now = new Date();
             Timestamp timestamp = new Timestamp(now.getTime());
+            timestamp = Timestamp.from(timestamp.toInstant().minus(10, ChronoUnit.HOURS));
             parkingDA.selectOneByCarId(parking);
+            if (parking.getEnterTime().compareTo(timestamp) > 0)
+            {
+                throw new ExitTimeIsSmallerThanEnterTime();
+            }
             parking.setExitTime(timestamp);
             double cost = calcCost(parking);
             parking.setCost(cost);
             parkingDA.update(parking);
             parkingDA.commit();
+        } catch (ExitTimeIsSmallerThanEnterTime e) {
+            ExceptionWrapper.getExceptionMessage(e);
+        } catch (RecordNotFoundException e) {
+            ExceptionWrapper.getExceptionMessage(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
