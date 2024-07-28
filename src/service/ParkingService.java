@@ -1,9 +1,8 @@
 package service;
 
-import entity.ExceptionWrapper;
-import entity.ExitTimeIsSmallerThanEnterTime;
-import entity.Parking;
-import entity.RecordNotFoundException;
+import entity.*;
+import repository.ConnectionProvider;
+import repository.CostsDA;
 import repository.ParkingDA;
 
 import java.sql.SQLException;
@@ -20,27 +19,30 @@ public class ParkingService {
     private long step3;
 
     public void enter(Parking parking) throws Exception {
-        try (ParkingDA parkingDA = new ParkingDA();) {
+        try (ConnectionProvider connectionProvider = new ConnectionProvider();) {
+            ParkingDA parkingDA = new ParkingDA(connectionProvider.getConnection());
             parkingDA.insert(parking);
-            parkingDA.commit();
         }
     }
 
     public void exit(Parking parking) {
-        try (ParkingDA parkingDA = new ParkingDA();) {
+        try (ConnectionProvider connectionProvider = new ConnectionProvider();) {
+            ParkingDA parkingDA = new ParkingDA(connectionProvider.getConnection());
+            CostsDA costsDA = new CostsDA(connectionProvider.getConnection());
+            List<Costs> list = new ArrayList<>();
+            list = costsDA.selectAll();
             Date now = new Date();
             Timestamp timestamp = new Timestamp(now.getTime());
-            timestamp = Timestamp.from(timestamp.toInstant().minus(10, ChronoUnit.HOURS));
+//            timestamp = Timestamp.from(timestamp.toInstant().minus(10, ChronoUnit.HOURS));
             parkingDA.selectOneByCarId(parking);
             if (parking.getEnterTime().compareTo(timestamp) > 0)
             {
                 throw new ExitTimeIsSmallerThanEnterTime();
             }
             parking.setExitTime(timestamp);
-            double cost = calcCost(parking);
+            double cost = calcCost(parking, list);
             parking.setCost(cost);
             parkingDA.update(parking);
-            parkingDA.commit();
         } catch (ExitTimeIsSmallerThanEnterTime e) {
             ExceptionWrapper.getExceptionMessage(e);
         } catch (RecordNotFoundException e) {
@@ -62,50 +64,63 @@ public class ParkingService {
         return  (diff * coEfficient) / (60 * 60 * 1000);
     }
 
-    public double calcCost(Parking parking) {
-        Map<String, Integer> map = new HashMap<>();
-        map.put("step1", 2);
-        map.put("step2", 4);
-        map.put("step3", 3);
+    public List<Timestamp> makeTimeStampFromHour(String fromHour, String toHour) {
         Timestamp originalTimestamp = new Timestamp(System.currentTimeMillis());
         LocalDateTime originalDateTime = originalTimestamp.toLocalDateTime();
-        LocalTime newTime = LocalTime.of(6, 0);
+        LocalTime newTime = LocalTime.of(Integer.parseInt(fromHour.substring(0, 2)), Integer.parseInt(fromHour.substring(3, 5)));
         LocalDateTime updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
-        Timestamp sixHourTs = Timestamp.valueOf(updatedDateTime);
-        newTime = LocalTime.of(12, 0);
+        Timestamp fromTs = Timestamp.valueOf(updatedDateTime);
+        newTime = LocalTime.of(Integer.parseInt(toHour.substring(0, 2)), Integer.parseInt(toHour.substring(3, 5)));
         updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
-        Timestamp twelveHourTs = Timestamp.valueOf(updatedDateTime);
-        newTime = LocalTime.of(18, 0);
-        updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
-        Timestamp eighteenHourTs = Timestamp.valueOf(updatedDateTime);
-        newTime = LocalTime.of(23, 59);
-        updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
-        Timestamp lastHourTs = Timestamp.valueOf(updatedDateTime);
-
-        if (isBetween(parking.getEnterTime(), sixHourTs, twelveHourTs)) {
-            if (isBetween(parking.getExitTime(), sixHourTs, twelveHourTs)) {
-                step1 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
-            } else if (isBetween(parking.getExitTime(), twelveHourTs, eighteenHourTs)) {
-                step2 = parking.getExitTime().getTime() - twelveHourTs.getTime();
-                step1 = twelveHourTs.getTime() - parking.getEnterTime().getTime();
-            } else if (isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
-                step3 = parking.getExitTime().getTime() - eighteenHourTs.getTime();
-                step2 = eighteenHourTs.getTime() - twelveHourTs.getTime();
-                step1 = twelveHourTs.getTime() - parking.getEnterTime().getTime();
-            }
-        } else if (isBetween(parking.getEnterTime(), twelveHourTs, eighteenHourTs)) {
-            if (isBetween(parking.getExitTime(), twelveHourTs, eighteenHourTs)) {
-                step2 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
-            } else if (isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
-                step3 = parking.getExitTime().getTime() - eighteenHourTs.getTime();
-                step2 = eighteenHourTs.getTime() - parking.getEnterTime().getTime();
-            }
-        } else if (isBetween(parking.getEnterTime(), eighteenHourTs, lastHourTs) &&
-                isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
-            step3 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
-        }
-        return convertTimeStampToRial(step1, map.get("step1")) + convertTimeStampToRial(step2, map.get("step2")) + convertTimeStampToRial(step3, map.get("step3"));
+        Timestamp toTs = Timestamp.valueOf(updatedDateTime);
+        List<Timestamp> list = new ArrayList<>();
+        list.add(fromTs);
+        list.add(toTs);
+        return list;
     }
+
+    public double calcCost(Parking parking, List<Costs> list) {
+        Map<List<Timestamp>, Double> map = new HashMap<>();
+        for (Costs rec : list) {
+            List<Timestamp> Ts = makeTimeStampFromHour(rec.getFromHour(), rec.getToHour());
+            map.put(Ts, rec.getCostPerHour());
+        }
+
+        for (List key : map.keySet()) {
+            Double value = map.get(key);
+            if (isBetween(parking.getEnterTime(), (Timestamp) key.get(0), (Timestamp) key.get(1))) {
+                int startingIndex = key.indexOf(value);
+            }
+            if (isBetween(parking.getExitTime(), (Timestamp) key.get(0), (Timestamp) key.get(1))) ;
+            int endingIndex = key.indexOf(value);
+        }
+        Double db = 1.00;
+        return db;
+    }
+
+//        if (isBetween(parking.getEnterTime(), sixHourTs, twelveHourTs)) {
+//            if (isBetween(parking.getExitTime(), sixHourTs, twelveHourTs)) {
+//                step1 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
+//            } else if (isBetween(parking.getExitTime(), twelveHourTs, eighteenHourTs)) {
+//                step2 = parking.getExitTime().getTime() - twelveHourTs.getTime();
+//                step1 = twelveHourTs.getTime() - parking.getEnterTime().getTime();
+//            } else if (isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
+//                step3 = parking.getExitTime().getTime() - eighteenHourTs.getTime();
+//                step2 = eighteenHourTs.getTime() - twelveHourTs.getTime();
+//                step1 = twelveHourTs.getTime() - parking.getEnterTime().getTime();
+//            }
+//        } else if (isBetween(parking.getEnterTime(), twelveHourTs, eighteenHourTs)) {
+//            if (isBetween(parking.getExitTime(), twelveHourTs, eighteenHourTs)) {
+//                step2 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
+//            } else if (isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
+//                step3 = parking.getExitTime().getTime() - eighteenHourTs.getTime();
+//                step2 = eighteenHourTs.getTime() - parking.getEnterTime().getTime();
+//            }
+//        } else if (isBetween(parking.getEnterTime(), eighteenHourTs, lastHourTs) &&
+//                isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
+//            step3 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
+//        }
+//        return convertTimeStampToRial(step1, map.get("step1")) + convertTimeStampToRial(step2, map.get("step2")) + convertTimeStampToRial(step3, map.get("step3"));
 }
 
 
