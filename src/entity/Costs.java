@@ -1,5 +1,7 @@
 package entity;
 
+import java.sql.Timestamp;
+
 public class Costs {
     private int id;
 
@@ -8,6 +10,10 @@ public class Costs {
     private String toHour;
 
     private double costPerHour;
+
+    private Timestamp fromTimeStamp;
+
+    private Timestamp toTimeStamp;
 
     public int getId() {
         return id;
@@ -42,6 +48,24 @@ public class Costs {
 
     public Costs setCostPerHour(double costPerHour) {
         this.costPerHour = costPerHour;
+        return this;
+    }
+
+    public Timestamp getFromTimeStamp() {
+        return fromTimeStamp;
+    }
+
+    public Costs setFromTimeStamp(Timestamp fromTimeStamp) {
+        this.fromTimeStamp = fromTimeStamp;
+        return this;
+    }
+
+    public Timestamp getToTimeStamp() {
+        return toTimeStamp;
+    }
+
+    public Costs setToTimeStamp(Timestamp toTimeStamp) {
+        this.toTimeStamp = toTimeStamp;
         return this;
     }
 }

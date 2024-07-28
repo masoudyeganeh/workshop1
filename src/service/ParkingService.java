@@ -6,7 +6,6 @@ import repository.CostsDA;
 import repository.ParkingDA;
 
 import java.sql.SQLException;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -33,10 +32,9 @@ public class ParkingService {
             list = costsDA.selectAll();
             Date now = new Date();
             Timestamp timestamp = new Timestamp(now.getTime());
-//            timestamp = Timestamp.from(timestamp.toInstant().minus(10, ChronoUnit.HOURS));
+            timestamp = Timestamp.from(timestamp.toInstant().minus(1, ChronoUnit.HOURS));
             parkingDA.selectOneByCarId(parking);
-            if (parking.getEnterTime().compareTo(timestamp) > 0)
-            {
+            if (parking.getEnterTime().compareTo(timestamp) > 0) {
                 throw new ExitTimeIsSmallerThanEnterTime();
             }
             parking.setExitTime(timestamp);
@@ -60,67 +58,49 @@ public class ParkingService {
         return t.getTime() > min.getTime() && t.getTime() <= max.getTime();
     }
 
-    public double convertTimeStampToRial(Long diff,int coEfficient) {
-        return  (diff * coEfficient) / (60 * 60 * 1000);
+    public double convertTimeStampToRial(Long diff, double coEfficient) {
+        return (diff * coEfficient) / (60 * 60 * 1000);
     }
 
-    public List<Timestamp> makeTimeStampFromHour(String fromHour, String toHour) {
-        Timestamp originalTimestamp = new Timestamp(System.currentTimeMillis());
-        LocalDateTime originalDateTime = originalTimestamp.toLocalDateTime();
-        LocalTime newTime = LocalTime.of(Integer.parseInt(fromHour.substring(0, 2)), Integer.parseInt(fromHour.substring(3, 5)));
+    public Costs makeTimeStampFromHour(Costs cost, Parking parking) {
+        Timestamp originalEnterTimestamp = parking.getEnterTime();
+        LocalDateTime originalDateTime = originalEnterTimestamp.toLocalDateTime();
+        LocalTime newTime = LocalTime.of(Integer.parseInt(cost.getFromHour().substring(0, 2)), Integer.parseInt(cost.getToHour().substring(3, 5)));
         LocalDateTime updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
         Timestamp fromTs = Timestamp.valueOf(updatedDateTime);
-        newTime = LocalTime.of(Integer.parseInt(toHour.substring(0, 2)), Integer.parseInt(toHour.substring(3, 5)));
+        newTime = LocalTime.of(Integer.parseInt(cost.getToHour().substring(0, 2)), Integer.parseInt(cost.getToHour().substring(3, 5)));
         updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
         Timestamp toTs = Timestamp.valueOf(updatedDateTime);
-        List<Timestamp> list = new ArrayList<>();
-        list.add(fromTs);
-        list.add(toTs);
-        return list;
+        cost.setFromTimeStamp(fromTs);
+        cost.setToTimeStamp(toTs);
+        return cost;
     }
 
     public double calcCost(Parking parking, List<Costs> list) {
-        Map<List<Timestamp>, Double> map = new HashMap<>();
+        boolean startingIndexFound = false;
+        double fee = 0.0;
         for (Costs rec : list) {
-            List<Timestamp> Ts = makeTimeStampFromHour(rec.getFromHour(), rec.getToHour());
-            map.put(Ts, rec.getCostPerHour());
-        }
-
-        for (List key : map.keySet()) {
-            Double value = map.get(key);
-            if (isBetween(parking.getEnterTime(), (Timestamp) key.get(0), (Timestamp) key.get(1))) {
-                int startingIndex = key.indexOf(value);
+            Costs costs = makeTimeStampFromHour(rec, parking);
+            if (!startingIndexFound) {
+                if (isBetween(parking.getEnterTime(), costs.getFromTimeStamp(), costs.getToTimeStamp())) {
+                    startingIndexFound = true;
+                    if (parking.getExitTime().compareTo(costs.getToTimeStamp()) > 0) {
+                        fee = convertTimeStampToRial(costs.getToTimeStamp().getTime() - parking.getEnterTime().getTime(), costs.getCostPerHour());
+                    } else {
+                        fee = convertTimeStampToRial(parking.getExitTime().getTime() - parking.getEnterTime().getTime(), costs.getCostPerHour());
+                        break;
+                    }
+                }
+            } else if (isBetween(parking.getExitTime(), costs.getFromTimeStamp(), costs.getToTimeStamp())) {
+                fee += convertTimeStampToRial(parking.getExitTime().getTime() -
+                        costs.getFromTimeStamp().getTime(), costs.getCostPerHour());
+                break;
+            } else {
+                fee += convertTimeStampToRial(costs.getToTimeStamp().getTime() - costs.getFromTimeStamp().getTime(), costs.getCostPerHour());
             }
-            if (isBetween(parking.getExitTime(), (Timestamp) key.get(0), (Timestamp) key.get(1))) ;
-            int endingIndex = key.indexOf(value);
         }
-        Double db = 1.00;
-        return db;
+        return fee;
     }
-
-//        if (isBetween(parking.getEnterTime(), sixHourTs, twelveHourTs)) {
-//            if (isBetween(parking.getExitTime(), sixHourTs, twelveHourTs)) {
-//                step1 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
-//            } else if (isBetween(parking.getExitTime(), twelveHourTs, eighteenHourTs)) {
-//                step2 = parking.getExitTime().getTime() - twelveHourTs.getTime();
-//                step1 = twelveHourTs.getTime() - parking.getEnterTime().getTime();
-//            } else if (isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
-//                step3 = parking.getExitTime().getTime() - eighteenHourTs.getTime();
-//                step2 = eighteenHourTs.getTime() - twelveHourTs.getTime();
-//                step1 = twelveHourTs.getTime() - parking.getEnterTime().getTime();
-//            }
-//        } else if (isBetween(parking.getEnterTime(), twelveHourTs, eighteenHourTs)) {
-//            if (isBetween(parking.getExitTime(), twelveHourTs, eighteenHourTs)) {
-//                step2 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
-//            } else if (isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
-//                step3 = parking.getExitTime().getTime() - eighteenHourTs.getTime();
-//                step2 = eighteenHourTs.getTime() - parking.getEnterTime().getTime();
-//            }
-//        } else if (isBetween(parking.getEnterTime(), eighteenHourTs, lastHourTs) &&
-//                isBetween(parking.getExitTime(), eighteenHourTs, lastHourTs)) {
-//            step3 = parking.getExitTime().getTime() - parking.getEnterTime().getTime();
-//        }
-//        return convertTimeStampToRial(step1, map.get("step1")) + convertTimeStampToRial(step2, map.get("step2")) + convertTimeStampToRial(step3, map.get("step3"));
 }
 
 

@@ -13,6 +13,10 @@ public class Parking {
     private Timestamp exitTime;
     private double cost;
 
+    private int startingCostId;
+
+    private int endingCostId;
+
     public int getId() {
         return id;
     }
@@ -73,6 +77,24 @@ public class Parking {
 
     public Parking setCost(double cost) {
         this.cost = cost;
+        return this;
+    }
+
+    public int getStartingCostId() {
+        return startingCostId;
+    }
+
+    public Parking setStartingCostId(int startingCostId) {
+        this.startingCostId = startingCostId;
+        return this;
+    }
+
+    public int getEndingCostId() {
+        return endingCostId;
+    }
+
+    public Parking setEndingCostId(int endingCostId) {
+        this.endingCostId = endingCostId;
         return this;
     }
 }
