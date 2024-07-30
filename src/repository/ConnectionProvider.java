@@ -10,7 +10,7 @@ public class ConnectionProvider implements AutoCloseable{
     public ConnectionProvider() {
         try {
             Class.forName("oracle.jdbc.driver.OracleDriver");
-            connection = DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521/xepdb1", "masoud", "1234");
+            connection = DriverManager.getConnection("jdbc:oracle:thin:@avdf01.rh:2019/rayannav21c.rh", "N12KRP209", "n");
             connection.setAutoCommit(false);
         } catch (Exception e) {
             throw new RuntimeException(e);

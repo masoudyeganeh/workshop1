@@ -9,8 +9,6 @@ public class ExceptionWrapper extends Exception{
             System.out.println("1001: no car found in the parking");
         } else if (e instanceof ExitTimeIsSmallerThanEnterTime) {
             System.out.println("Exit Time Is Smaller Than Enter Time");
-
         }
     }
-
 }

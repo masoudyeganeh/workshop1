@@ -3,6 +3,7 @@ package service;
 import entity.*;
 import repository.ConnectionProvider;
 import repository.CostsDA;
+import repository.FixedCostDA;
 import repository.ParkingDA;
 
 import java.sql.SQLException;
@@ -27,18 +28,21 @@ public class ParkingService {
     public void exit(Parking parking) {
         try (ConnectionProvider connectionProvider = new ConnectionProvider();) {
             ParkingDA parkingDA = new ParkingDA(connectionProvider.getConnection());
+            FixedCostDA fixedCostDA = new FixedCostDA(connectionProvider.getConnection());
+            FixedCost fixedCost = new FixedCost();
+            fixedCost = fixedCostDA.selectAll();
             CostsDA costsDA = new CostsDA(connectionProvider.getConnection());
             List<Costs> list = new ArrayList<>();
             list = costsDA.selectAll();
             Date now = new Date();
             Timestamp timestamp = new Timestamp(now.getTime());
-            timestamp = Timestamp.from(timestamp.toInstant().minus(1, ChronoUnit.HOURS));
+            timestamp = Timestamp.from(timestamp.toInstant().plus(1, ChronoUnit.HOURS));
             parkingDA.selectOneByCarId(parking);
             if (parking.getEnterTime().compareTo(timestamp) > 0) {
                 throw new ExitTimeIsSmallerThanEnterTime();
             }
             parking.setExitTime(timestamp);
-            double cost = calcCost(parking, list);
+            double cost = calcCost(parking, list, fixedCost.getFixedCost());
             parking.setCost(cost);
             parkingDA.update(parking);
         } catch (ExitTimeIsSmallerThanEnterTime e) {
@@ -76,30 +80,30 @@ public class ParkingService {
         return cost;
     }
 
-    public double calcCost(Parking parking, List<Costs> list) {
+    public double calcCost(Parking parking, List<Costs> list, double fixedcost) {
         boolean startingIndexFound = false;
-        double fee = 0.0;
+        double perfCost = 0.0;
         for (Costs rec : list) {
             Costs costs = makeTimeStampFromHour(rec, parking);
             if (!startingIndexFound) {
                 if (isBetween(parking.getEnterTime(), costs.getFromTimeStamp(), costs.getToTimeStamp())) {
                     startingIndexFound = true;
                     if (parking.getExitTime().compareTo(costs.getToTimeStamp()) > 0) {
-                        fee = convertTimeStampToRial(costs.getToTimeStamp().getTime() - parking.getEnterTime().getTime(), costs.getCostPerHour());
+                        perfCost = convertTimeStampToRial(costs.getToTimeStamp().getTime() - parking.getEnterTime().getTime(), costs.getCostPerHour());
                     } else {
-                        fee = convertTimeStampToRial(parking.getExitTime().getTime() - parking.getEnterTime().getTime(), costs.getCostPerHour());
+                        perfCost = convertTimeStampToRial(parking.getExitTime().getTime() - parking.getEnterTime().getTime(), costs.getCostPerHour());
                         break;
                     }
                 }
             } else if (isBetween(parking.getExitTime(), costs.getFromTimeStamp(), costs.getToTimeStamp())) {
-                fee += convertTimeStampToRial(parking.getExitTime().getTime() -
+                perfCost += convertTimeStampToRial(parking.getExitTime().getTime() -
                         costs.getFromTimeStamp().getTime(), costs.getCostPerHour());
                 break;
             } else {
-                fee += convertTimeStampToRial(costs.getToTimeStamp().getTime() - costs.getFromTimeStamp().getTime(), costs.getCostPerHour());
+                perfCost += convertTimeStampToRial(costs.getToTimeStamp().getTime() - costs.getFromTimeStamp().getTime(), costs.getCostPerHour());
             }
         }
-        return fee;
+        return perfCost + fixedcost;
     }
 }
 

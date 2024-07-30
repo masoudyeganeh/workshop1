@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="ORA-JDBC-DRIVER">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../../../../ORA-JDBC-DRIVER" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+    <jarDirectory url="file://$PROJECT_DIR$/../../../../ORA-JDBC-DRIVER" recursive="false" />
+  </library>
+</component>

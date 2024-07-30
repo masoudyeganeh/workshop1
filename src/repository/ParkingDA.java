@@ -46,7 +46,7 @@ public class ParkingDA implements AutoCloseable {
     }
 
     public void selectOneByCarId(Parking parking) throws Exception, RecordNotFoundException {
-        preparedStatement = connection.prepareStatement("select * from Parking where car_id = ?");
+        preparedStatement = connection.prepareStatement("select * from Parking where car_id = ? order by enter_time desc");
         preparedStatement.setInt(1, parking.getCarId());
         ResultSet resultSet = preparedStatement.executeQuery();
         if(!resultSet.next()) {
