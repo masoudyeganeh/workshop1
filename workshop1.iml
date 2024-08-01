@@ -8,5 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="dms1" level="project" />
+    <orderEntry type="library" name="ORA-JDBC-DRIVER" level="project" />
   </component>
 </module>

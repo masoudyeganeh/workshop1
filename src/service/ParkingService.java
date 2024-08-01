@@ -36,7 +36,7 @@ public class ParkingService {
             list = costsDA.selectAll();
             Date now = new Date();
             Timestamp timestamp = new Timestamp(now.getTime());
-            timestamp = Timestamp.from(timestamp.toInstant().plus(1, ChronoUnit.HOURS));
+            timestamp = Timestamp.from(timestamp.toInstant().plus(12, ChronoUnit.HOURS));
             parkingDA.selectOneByCarId(parking);
             if (parking.getEnterTime().compareTo(timestamp) > 0) {
                 throw new ExitTimeIsSmallerThanEnterTime();
@@ -69,7 +69,7 @@ public class ParkingService {
     public Costs makeTimeStampFromHour(Costs cost, Parking parking) {
         Timestamp originalEnterTimestamp = parking.getEnterTime();
         LocalDateTime originalDateTime = originalEnterTimestamp.toLocalDateTime();
-        LocalTime newTime = LocalTime.of(Integer.parseInt(cost.getFromHour().substring(0, 2)), Integer.parseInt(cost.getToHour().substring(3, 5)));
+        LocalTime newTime = LocalTime.of(Integer.parseInt(cost.getFromHour().substring(0, 2)), Integer.parseInt(cost.getFromHour().substring(3, 5)));
         LocalDateTime updatedDateTime = originalDateTime.withHour(newTime.getHour()).withMinute(newTime.getMinute()).withSecond(newTime.getSecond()).withNano(newTime.getNano());
         Timestamp fromTs = Timestamp.valueOf(updatedDateTime);
         newTime = LocalTime.of(Integer.parseInt(cost.getToHour().substring(0, 2)), Integer.parseInt(cost.getToHour().substring(3, 5)));

@@ -9,7 +9,7 @@ public class Main {
         Date now = new Date();
         Timestamp timestamp = new Timestamp(now.getTime());
         //enter
-//        Parking parking = new Parking().setId(107).setBrand("Aa").setModel("Bb").setCarId(51).setEnterTime(timestamp);
+//        Parking parking = new Parking().setId(105).setBrand("Aa").setModel("Bb").setCarId(56).setEnterTime(timestamp);
 //        try {
 //            ParkingService parkingService = new ParkingService();
 //            parkingService.enter(parking);
@@ -18,7 +18,7 @@ public class Main {
 //            e.printStackTrace();
 //        }
         //exit
-        Parking parking1 = new Parking().setCarId(51);
+        Parking parking1 = new Parking().setCarId(64);
         try {
             ParkingService parkingService = new ParkingService();
             parkingService.exit(parking1);
